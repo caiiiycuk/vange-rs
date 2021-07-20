@@ -1,3 +1,5 @@
+use wasm_bindgen::prelude::*;
+
 mod layers;
 mod level_png;
 mod model_obj;
@@ -51,7 +53,27 @@ pub fn save_tiff(path: &PathBuf, layers: layers::LevelLayers) {
     tiff::save(file, &images).unwrap();
 }
 
+// Import the `window.alert` function from the Web.
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+#[wasm_bindgen]
+pub fn ron2vmp(ron_multi_png: Vec<u8>, height_png: Vec<u8>, material_hi_png: Vec<u8>, material_lo_png: Vec<u8>) -> Vec<u8> {
+    log("\tLoading multiple PNGs...");
+    let layers = level_png::load(&ron_multi_png, &height_png, &material_hi_png, &material_lo_png);
+    log("\tSaving VMP...");
+    return layers.export().save_vmp();
+}
+
 fn main() {
+    log("vange-rs convert started...");
+}
+
+/*
+fn native_main() {
     use std::env;
     use std::io::Write;
 
@@ -182,3 +204,4 @@ fn main() {
         }
     }
 }
+*/

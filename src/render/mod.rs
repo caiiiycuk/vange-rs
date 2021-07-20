@@ -5,7 +5,6 @@ use crate::{
 };
 
 use bytemuck::{Pod, Zeroable};
-use glsl_to_spirv;
 use wgpu::util::DeviceExt as _;
 
 use std::{
@@ -167,19 +166,6 @@ impl Shaders {
         debug!("fs:\n{}", str_fs);
 
         let (mut spv_vs, mut spv_fs) = (Vec::new(), Vec::new());
-        match glsl_to_spirv::compile(&str_vs, glsl_to_spirv::ShaderType::Vertex) {
-            Ok(mut file) => file.read_to_end(&mut spv_vs).unwrap(),
-            Err(ref e) => {
-                Self::fail(name, &str_vs, e);
-            }
-        };
-        match glsl_to_spirv::compile(&str_fs, glsl_to_spirv::ShaderType::Fragment) {
-            Ok(mut file) => file.read_to_end(&mut spv_fs).unwrap(),
-            Err(ref e) => {
-                Self::fail(name, &str_fs, e);
-            }
-        };
-
         Ok(Shaders {
             vs: device.create_shader_module(&wgpu::ShaderModuleDescriptor {
                 label: Some(name),
@@ -250,12 +236,6 @@ impl Shaders {
         debug!("cs:\n{}", str_cs);
 
         let mut spv = Vec::new();
-        match glsl_to_spirv::compile(&str_cs, glsl_to_spirv::ShaderType::Compute) {
-            Ok(mut file) => file.read_to_end(&mut spv).unwrap(),
-            Err(ref e) => {
-                Self::fail(name, &str_cs, e);
-            }
-        };
 
         Ok(device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some(name),

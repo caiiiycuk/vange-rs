@@ -2,7 +2,7 @@ use byteorder::{LittleEndian as E, ReadBytesExt, WriteBytesExt};
 
 use std::{
     fs::File,
-    io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write},
+    io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write, Cursor},
     path::Path,
 };
 
@@ -248,8 +248,8 @@ fn avg(a: u8, b: u8) -> u8 {
 }
 
 impl LevelData {
-    pub fn save_vmp(&self, path: &Path) {
-        let mut vmp = BufWriter::new(File::create(path).unwrap());
+    pub fn save_vmp(&self) -> Vec<u8> {
+        let mut vmp = BufWriter::new(Vec::new());
         self.height
             .chunks(self.size.0 as _)
             .zip(self.meta.chunks(self.size.0 as _))
@@ -257,6 +257,7 @@ impl LevelData {
                 vmp.write_all(h_row).unwrap();
                 vmp.write_all(m_row).unwrap();
             });
+        return vmp.into_inner().unwrap();
     }
 
     pub fn save_vmc(&self, path: &Path) {

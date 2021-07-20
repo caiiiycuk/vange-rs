@@ -2,9 +2,30 @@
 
 This fork is about converting great `convert` utility to wasm module
 
-Building native version:
-`cargo build --bin convert`
+Install wasm-bindgen:
+```
+cargo install wasm-bindgen-cli --version 0.2.74
+```
 
+Build wasm (release):
+```
+RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build --no-default-features --target wasm32-unknown-unknown --release && \
+  wasm-bindgen --out-dir target/generated --web target/wasm32-unknown-unknown/release/convert.wasm
+```
+
+Build wasm (debug):
+```
+RUSTFLAGS=--cfg=web_sys_unstable_apis cargo build --no-default-features --target wasm32-unknown-unknown && \
+  wasm-bindgen --out-dir target/generated --web target/wasm32-unknown-unknown/debug/convert.wasm
+```
+
+Testing:
+
+Start http server pointed to target/generated and run index.html. Set 4 files (ron, height, material_hi, material_lo) and pres "Go".
+When convertation ended you will able to download vmp file.
+
+
+[wgpu in browser](https://github.com/gfx-rs/wgpu-rs/wiki/Running-on-the-Web-with-WebGPU-and-WebGL)
 
 
 # Vange-rs

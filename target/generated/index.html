@@ -1,0 +1,75 @@
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+
+<body>
+  <script type="module">
+    import init, { ron2vmp } from "./convert.js";
+
+    function load() {
+      alert("Ok!");
+      init().then(async (m) => {
+        const ronFile = document.getElementById("ron").files[0];
+        const heightFile = document.getElementById("height").files[0];
+        const hiFile = document.getElementById("hi").files[0];
+        const loFile = document.getElementById("lo").files[0];
+
+        const ron = await readContents(ronFile);
+        const height = await readContents(heightFile);
+        const hi = await readContents(hiFile);
+        const lo = await readContents(loFile);
+
+        console.log("ron2vmp", ron, height, hi, lo);
+
+        const vmp = ron2vmp(ron, height, hi, lo);
+        console.log("vmp", vmp);
+
+        downloadBlob(vmp, 'output.vmp', 'application/octet-stream');
+      }).catch(console.error);
+    }
+
+    async function readContents(file) {
+      const reader = new FileReader();
+
+      return new Promise((resolve, reject) => {
+        reader.addEventListener('load', (event) => {
+          resolve(new Uint8Array(reader.result));
+        })
+        reader.readAsArrayBuffer(file);
+      })
+    }
+
+    const downloadURL = (data, fileName) => {
+      const a = document.createElement('a')
+      a.href = data
+      a.download = fileName
+      document.body.appendChild(a)
+      a.style.display = 'none'
+      a.click()
+      a.remove()
+    }
+   
+    const downloadBlob = (data, fileName, mimeType) => {
+      const blob = new Blob([data], {
+        type: mimeType
+      })
+      const url = window.URL.createObjectURL(blob)
+      downloadURL(url, fileName)
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+    }
+
+    window.load = load;
+  </script>
+
+  <input type="file" id="ron" />
+  <input type="file" id="height" />
+  <input type="file" id="hi" />
+  <input type="file" id="lo" />
+  <button onclick="javascript:load()">GO!</button>
+
+</body>
+
+</html>

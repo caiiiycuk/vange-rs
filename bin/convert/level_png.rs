@@ -3,6 +3,7 @@ use crate::layers::LevelLayers;
 use serde::{Deserialize, Serialize};
 
 use std::{fs::File, path::PathBuf};
+use std::io::Cursor;
 
 #[derive(Serialize, Deserialize)]
 struct MultiPng {
@@ -71,14 +72,12 @@ pub fn save(path: &PathBuf, layers: LevelLayers, palette: &[u8]) {
     }
 }
 
-pub fn load(path: &PathBuf) -> LevelLayers {
-    let level_file = File::open(path).unwrap();
-    let mp = ron::de::from_reader::<_, MultiPng>(level_file).unwrap();
+pub fn load(ron_multi_png: &Vec<u8>, height_png: &Vec<u8>, material_hi_png: &Vec<u8>, material_lo_png: &Vec<u8>) -> LevelLayers {
+    let mp = ron::de::from_bytes::<MultiPng>(ron_multi_png).unwrap();
     let mut layers = LevelLayers::new(mp.size, mp.num_terrains);
     {
         println!("\t\t{}...", mp.height);
-        let file = File::open(path.with_file_name(mp.height)).unwrap();
-        let decoder = png::Decoder::new(file);
+        let decoder = png::Decoder::new(Cursor::new(height_png));
         let (info, mut reader) = decoder.read_info().unwrap();
         assert_eq!((info.width, info.height), mp.size);
         let stride = match info.color_type {
@@ -98,8 +97,7 @@ pub fn load(path: &PathBuf) -> LevelLayers {
     }
     {
         println!("\t\t{}...", mp.material_lo);
-        let file = File::open(path.with_file_name(mp.material_lo)).unwrap();
-        let mut decoder = png::Decoder::new(file);
+        let mut decoder = png::Decoder::new(Cursor::new(material_hi_png));
         decoder.set_transformations(png::Transformations::empty());
         let (info, mut reader) = decoder.read_info().unwrap();
         assert_eq!((info.width, info.height), mp.size);
@@ -112,8 +110,7 @@ pub fn load(path: &PathBuf) -> LevelLayers {
     }
     {
         println!("\t\t{}...", mp.material_hi);
-        let file = File::open(path.with_file_name(mp.material_hi)).unwrap();
-        let mut decoder = png::Decoder::new(file);
+        let mut decoder = png::Decoder::new(Cursor::new(material_lo_png));
         decoder.set_transformations(png::Transformations::empty());
         let (info, mut reader) = decoder.read_info().unwrap();
         assert_eq!((info.width, info.height), mp.size);
