@@ -1,3 +1,12 @@
+# Abstract
+
+This fork is about converting great `convert` utility to wasm module
+
+Building native version:
+`cargo build --bin convert`
+
+
+
 # Vange-rs
 ![Check](https://github.com/kvark/vange-rs/workflows/Check/badge.svg)
 [![Gitter](https://badges.gitter.im/kvark/vange-rs.svg)](https://gitter.im/vange-rs/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)

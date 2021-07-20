@@ -204,7 +204,6 @@ pub fn read_palette(input: File, config: Option<&[TerrainConfig]>) -> [[u8; 4]; 
 }
 
 pub fn load_flood(config: &LevelConfig) -> Vec<u8> {
-    profiling::scope!("Flood Map");
     let size = (config.size.0.as_value(), config.size.1.as_value());
     let flood_size = size.1 >> config.section.as_power();
 
@@ -332,7 +331,6 @@ pub fn load_vmc(path: &Path, size: (i32, i32)) -> LevelData {
     };
 
     let (splay, st_table, sz_table) = {
-        profiling::scope!("Prepare");
         let mut vmc_base = BufReader::new(File::open(path).expect("Unable to open VMC"));
 
         info!("\tLoading compression tables...");
@@ -396,7 +394,6 @@ pub fn load_vmp(path: &Path, size: (i32, i32)) -> LevelData {
 }
 
 pub fn load(config: &LevelConfig) -> Level {
-    profiling::scope!("Load Level");
     info!("Loading data map...");
     let size = (config.size.0.as_value(), config.size.1.as_value());
     let LevelData { height, meta, size } = if config.is_compressed {

@@ -793,7 +793,6 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "fxhash",
- "gfx-auxil",
  "gfx-hal",
  "glow",
  "js-sys",
@@ -803,7 +802,6 @@ dependencies = [
  "naga",
  "parking_lot",
  "raw-window-handle",
- "spirv_cross",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -821,7 +819,6 @@ dependencies = [
  "copyless",
  "foreign-types",
  "fxhash",
- "gfx-auxil",
  "gfx-hal",
  "log",
  "metal",
@@ -831,7 +828,6 @@ dependencies = [
  "profiling",
  "range-alloc",
  "raw-window-handle",
- "spirv_cross",
  "storage-map",
 ]
 
@@ -1486,7 +1482,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a7c000c0ce9d9bb94c0fbacdf20e5087fbe652c556ffb2c9387d980e17d51fb"
 dependencies = [
  "profiling-procmacros",
- "tracy-client",
 ]
 
 [[package]]
@@ -1873,24 +1868,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracy-client"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8088b69594669b5b4ea2bd90b04676fcd0480a8624a52056ea87c5eb3a66d8ae"
-dependencies = [
- "tracy-client-sys",
-]
-
-[[package]]
-name = "tracy-client-sys"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6226e4e77f0d46ce7ebb0a4b1daa82790035248b75bbf605b932a1d7b3b22b6d"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "ttf-parser"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1929,7 +1906,6 @@ dependencies = [
  "m3d",
  "obj",
  "png",
- "profiling",
  "rand",
  "rayon",
  "ron",

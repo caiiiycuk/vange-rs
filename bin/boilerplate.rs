@@ -239,7 +239,6 @@ impl Harness {
                         Err(_) => {}
                     };
 
-                    profiling::finish_frame!();
                 }
                 _ => (),
             }

@@ -1,9 +1,9 @@
 [package]
 name = "vangers"
 version = "0.1.0"
-authors = ["kvark"]
+authors = ["kvark", "caiiiycuk"]
 edition = "2018"
-default-run = "road"
+default-run = "convert"
 publish = false
 
 [workspace]
@@ -14,30 +14,9 @@ members = [
 ]
 
 [profile.release]
-debug = true
+debug = false
 
 [lib]
-
-[features]
-default = []
-cross = ["wgpu/cross"]
-profile = ["profiling/profile-with-tracy"]
-
-[[bin]]
-name = "road"
-path = "bin/road/main.rs"
-
-[[bin]]
-name = "car"
-path = "bin/car/main.rs"
-
-[[bin]]
-name = "model"
-path = "bin/model/main.rs"
-
-[[bin]]
-name = "level"
-path = "bin/level/main.rs"
 
 [[bin]]
 name = "convert"
@@ -69,22 +48,3 @@ getopts = "0.2"
 obj = "0.10"
 png = "0.16"
 winit = "0.25"
-
-[dependencies.profiling]
-version = "1.0.1"
-default-features = false
-
-[patch."https://github.com/gfx-rs/naga"]
-#naga = { path = "../naga" }
-
-[patch."https://github.com/gfx-rs/gfx"]
-#gfx-hal = { path = "../gfx/src/hal" }
-#gfx-backend-empty = { path = "../gfx/src/backend/empty" }
-#gfx-backend-vulkan = { path = "../gfx/src/backend/vulkan" }
-#gfx-backend-dx12 = { path = "../gfx/src/backend/dx12" }
-#gfx-backend-dx11 = { path = "../gfx/src/backend/dx11" }
-#gfx-backend-metal = { path = "../gfx/src/backend/metal" }
-
-[patch."https://github.com/gfx-rs/wgpu"]
-#wgpu-core = { path = "../wgpu/wgpu-core" }
-#wgpu-types = { path = "../wgpu/wgpu-types" }
