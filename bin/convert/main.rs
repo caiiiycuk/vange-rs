@@ -68,6 +68,67 @@ pub fn ron2vmp(ron_multi_png: Vec<u8>, height_png: Vec<u8>, material_hi_png: Vec
     return layers.export().save_vmp();
 }
 
+static mut s_ron_multi_png: Vec<u8> = Vec::new();
+static mut s_height_png: Vec<u8> = Vec::new();
+static mut s_material_hi_png: Vec<u8> = Vec::new();
+static mut s_material_lo_png: Vec<u8> = Vec::new();
+
+#[wasm_bindgen]
+pub fn vmp2ron(ini: &str, vmp: Vec<u8>, vpr: Vec<u8>, palette: Vec<u8>) {
+    println!("\tLoading the level...");
+    let config = vangers::level::LevelConfig::load_str(ini);
+    let level = vangers::level::load_vec(&config, &vmp, &vpr, &palette);
+    let palette = layers::extract_palette(&level);
+    let layers = layers::LevelLayers::from_level_data(
+        &vangers::level::LevelData::from(level),
+        config.terrains.len() as u8,
+    );
+    println!("\tSaving multiple PNGs...");
+    let (ron, height, hi, lo) = level_png::save(layers, &palette);
+    unsafe {
+        s_ron_multi_png = ron.as_bytes().to_vec();
+        s_height_png = height;
+        s_material_hi_png = hi;
+        s_material_lo_png = lo;
+    }
+}
+
+#[wasm_bindgen]
+pub fn get_ron_multi_png() -> Vec<u8> {
+    let mut copy: Vec<u8> = Vec::new();
+    unsafe {
+        copy.append(&mut s_ron_multi_png);
+    }
+    return copy;
+}
+
+#[wasm_bindgen]
+pub fn get_height_png() -> Vec<u8> {
+    let mut copy: Vec<u8> = Vec::new();
+    unsafe {
+        copy.append(&mut s_height_png);
+    }
+    return copy;
+}
+
+#[wasm_bindgen]
+pub fn get_material_hi_png() -> Vec<u8> {
+    let mut copy: Vec<u8> = Vec::new();
+    unsafe {
+        copy.append(&mut s_material_hi_png);
+    }
+    return copy;
+}
+
+#[wasm_bindgen]
+pub fn get_material_lo_png() -> Vec<u8> {
+    let mut copy: Vec<u8> = Vec::new();
+    unsafe {
+        copy.append(&mut s_material_lo_png);
+    }
+    return copy;
+}
+
 fn main() {
     log("vange-rs convert started...");
 }

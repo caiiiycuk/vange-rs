@@ -14,8 +14,10 @@ struct MultiPng {
     material_hi: String,
 }
 
-pub fn save(path: &PathBuf, layers: LevelLayers, palette: &[u8]) {
-    use std::io::Write;
+pub fn save(layers: LevelLayers, palette: &[u8]) -> (std::string::String, Vec<u8>, Vec<u8>, Vec<u8>) {
+    let mut w_height = Vec::new();
+    let mut w_hi = Vec::new();
+    let mut w_lo = Vec::new();
 
     let mp = MultiPng {
         size: layers.size,
@@ -25,14 +27,11 @@ pub fn save(path: &PathBuf, layers: LevelLayers, palette: &[u8]) {
         material_hi: "material_hi.png".to_string(),
     };
     let string = ron::ser::to_string_pretty(&mp, ron::ser::PrettyConfig::default()).unwrap();
-    let mut level_file = File::create(path).unwrap();
-    write!(level_file, "{}", string).unwrap();
     let mut data = Vec::with_capacity(3 * (layers.size.0 as usize) * layers.size.1 as usize);
 
     {
         println!("\t\t{}...", mp.height);
-        let file = File::create(path.with_file_name(mp.height)).unwrap();
-        let mut encoder = png::Encoder::new(file, layers.size.0 as u32, layers.size.1 as u32);
+        let mut encoder = png::Encoder::new(&mut w_height, layers.size.0 as u32, layers.size.1 as u32);
         encoder.set_color(png::ColorType::RGB);
         data.clear();
         for ((&h0, &h1), &delta) in layers.het0.iter().zip(&layers.het1).zip(&layers.delta) {
@@ -46,8 +45,7 @@ pub fn save(path: &PathBuf, layers: LevelLayers, palette: &[u8]) {
     }
     {
         println!("\t\t{}...", mp.material_lo);
-        let file = File::create(path.with_file_name(mp.material_lo)).unwrap();
-        let mut encoder = png::Encoder::new(file, layers.size.0 as u32, layers.size.1 as u32);
+        let mut encoder = png::Encoder::new(&mut w_lo, layers.size.0 as u32, layers.size.1 as u32);
         encoder.set_color(png::ColorType::Indexed);
         encoder.set_palette(palette.to_vec());
         encoder.set_depth(png::BitDepth::Four);
@@ -59,8 +57,7 @@ pub fn save(path: &PathBuf, layers: LevelLayers, palette: &[u8]) {
     }
     {
         println!("\t\t{}...", mp.material_hi);
-        let file = File::create(path.with_file_name(mp.material_hi)).unwrap();
-        let mut encoder = png::Encoder::new(file, layers.size.0 as u32, layers.size.1 as u32);
+        let mut encoder = png::Encoder::new(&mut w_hi, layers.size.0 as u32, layers.size.1 as u32);
         encoder.set_color(png::ColorType::Indexed);
         encoder.set_palette(palette.to_vec());
         encoder.set_depth(png::BitDepth::Four);
@@ -70,6 +67,11 @@ pub fn save(path: &PathBuf, layers: LevelLayers, palette: &[u8]) {
             .write_image_data(&layers.mat1)
             .unwrap();
     }
+
+    return (string,
+            w_height,
+            w_hi,
+            w_lo);
 }
 
 pub fn load(ron_multi_png: &Vec<u8>, height_png: &Vec<u8>, material_hi_png: &Vec<u8>, material_lo_png: &Vec<u8>) -> LevelLayers {

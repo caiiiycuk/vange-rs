@@ -203,6 +203,44 @@ pub fn read_palette(input: File, config: Option<&[TerrainConfig]>) -> [[u8; 4]; 
     data
 }
 
+pub fn read_palette_vec(vec: &Vec<u8>, config: Option<&[TerrainConfig]>) -> [[u8; 4]; 0x100] {
+    let mut file = BufReader::new(Cursor::new(vec));
+    let mut data = [[0; 4]; 0x100];
+    for p in data.iter_mut() {
+        file.read_exact(&mut p[..3]).unwrap();
+        //p[0] <<= 2; p[1] <<= 2; p[2] <<= 2;
+    }
+    //print_palette(&data, "read from file");
+    if let Some(terrains) = config {
+        // see `PalettePrepare` of the original
+        data[0] = [0; 4];
+
+        for tc in terrains {
+            for c in &mut data[tc.colors.start as usize][..3] {
+                *c >>= 1;
+            }
+        }
+
+        for i in 0..16 {
+            let mut value = [(i * 4) as u8; 4];
+            value[3] = 0;
+            data[224 + i] = value;
+        }
+
+        //print_palette(&data, "corrected");
+    }
+    // see `XGR_Screen::setpal` of the original
+    for p in data.iter_mut() {
+        p[0] <<= 2;
+        p[1] <<= 2;
+        p[2] <<= 2;
+    }
+    //print_palette(&data, "scale");
+    //TODO: there is quite a bit of logic missing here,
+    // see `GeneralTableOpen` and `PalettePrepare` of the original.
+    data
+}
+
 pub fn load_flood(config: &LevelConfig) -> Vec<u8> {
     let size = (config.size.0.as_value(), config.size.1.as_value());
     let flood_size = size.1 >> config.section.as_power();
@@ -221,6 +259,24 @@ pub fn load_flood(config: &LevelConfig) -> Vec<u8> {
     let expected_file_size = flood_offset + (flood_size * 4) as u64;
     assert_eq!(vpr_file.metadata().unwrap().len(), expected_file_size,);
     let mut vpr = BufReader::new(vpr_file);
+    vpr.seek(SeekFrom::Start(flood_offset)).unwrap();
+    (0..flood_size)
+        .map(|_| vpr.read_u32::<E>().unwrap() as u8)
+        .collect()
+}
+
+pub fn load_flood_vec(config: &LevelConfig, vpr: &Vec<u8>) -> Vec<u8> {
+    let size = (config.size.0.as_value(), config.size.1.as_value());
+    let flood_size = size.1 >> config.section.as_power();
+
+    info!("Loading flood map...");
+    let geo_pow = config.geo.as_power();
+    let net_size = (size.0 * size.1) >> (2 * geo_pow);
+    let flood_offset =
+        (2 * 4 + (1 + 4 + 4) * 4 + 2 * net_size + 2 * geo_pow * 4 + 2 * flood_size * geo_pow * 4)
+            as u64;
+    let expected_file_size = flood_offset + (flood_size * 4) as u64;
+    let mut vpr = BufReader::new(Cursor::new(vpr));
     vpr.seek(SeekFrom::Start(flood_offset)).unwrap();
     (0..flood_size)
         .map(|_| vpr.read_u32::<E>().unwrap() as u8)
@@ -392,6 +448,46 @@ pub fn load_vmp(path: &Path, size: (i32, i32)) -> LevelData {
         });
 
     level
+}
+
+pub fn load_vmp_vec(vec: &Vec<u8>, size: (i32, i32)) -> LevelData {
+    let total = (size.0 * size.1) as usize;
+    let mut level = LevelData {
+        height: vec![0u8; total],
+        meta: vec![0u8; total],
+        size,
+    };
+
+    let mut vmp = BufReader::new(Cursor::new(vec));
+    level
+        .height
+        .chunks_mut(size.0 as _)
+        .zip(level.meta.chunks_mut(size.0 as _))
+        .for_each(|(h_row, m_row)| {
+            vmp.read_exact(h_row).unwrap();
+            vmp.read_exact(m_row).unwrap();
+        });
+
+    level
+}
+
+pub fn load_vec(config: &LevelConfig, vmp: &Vec<u8>, vpr: &Vec<u8>, palette: &Vec<u8>) -> Level {
+    info!("Loading data map...");
+    let size = (config.size.0.as_value(), config.size.1.as_value());
+    let LevelData { height, meta, size } = load_vmp_vec(vmp, size);
+
+    info!("Loading flood map...");
+    let flood_map = load_flood_vec(config, vpr);
+
+    Level {
+        size,
+        flood_map,
+        flood_section_power: config.section.as_power() as usize,
+        height,
+        meta,
+        palette: read_palette_vec(palette, Some(&config.terrains)),
+        terrains: config.terrains.clone(),
+    }
 }
 
 pub fn load(config: &LevelConfig) -> Level {
