@@ -19,10 +19,13 @@ pub struct TerrainConfig {
     pub colors: Range<u8>, // note: actually, this is inclusive range
 }
 
+pub struct LevelConfigPath {
+    pub palette: PathBuf,
+    pub data: PathBuf
+}
+
 pub struct LevelConfig {
-    //pub name: String,
-    pub path_palette: PathBuf,
-    pub path_data: PathBuf,
+    pub path: Option<LevelConfigPath>,
     pub is_compressed: bool,
     pub size: (Power, Power),
     pub geo: Power,
@@ -32,124 +35,82 @@ pub struct LevelConfig {
 }
 
 impl LevelConfig {
+    fn load_ini(ini: &Ini) -> Result<Self, ()> {
+        let global = &ini["Global Parameters"];
+        let storage = &ini["Storage"];
+        let render = &ini["Rendering Parameters"];
+
+        let terra_count = render
+            .get("Terrain Max")
+            .map_or(8, |value| value.parse::<usize>().unwrap());
+
+        let mut terrains = (0..terra_count)
+            .map(|_| TerrainConfig {
+                shadow_offset: 0,
+                height_shift: 0,
+                colors: 0..0,
+            })
+            .collect::<Box<[_]>>();
+
+        for (t, val) in terrains
+            .iter_mut()
+            .zip(render["Shadow Offsets"].split_whitespace())
+        {
+            t.shadow_offset = val.parse().unwrap();
+        }
+        for (t, val) in terrains
+            .iter_mut()
+            .zip(render["Height Shifts"].split_whitespace())
+        {
+            t.height_shift = val.parse().unwrap();
+        }
+        for (t, val) in terrains
+            .iter_mut()
+            .zip(render["Begin Colors"].split_whitespace())
+        {
+            t.colors.start = val.parse().unwrap();
+        }
+        for (t, val) in terrains
+            .iter_mut()
+            .zip(render["End Colors"].split_whitespace())
+        {
+            t.colors.end = val.parse().unwrap();
+        }
+
+        Ok(LevelConfig {
+            path: None,
+            is_compressed: &storage["Compressed Format Using"] != "0",
+            size: (
+                Power(global["Map Power X"].parse().unwrap()),
+                Power(global["Map Power Y"].parse().unwrap()),
+            ),
+            geo: Power(global["GeoNet Power"].parse().unwrap()),
+            section: Power(global["Section Size Power"].parse().unwrap()),
+            min_square: Power(global["Minimal Square Power"].parse().unwrap()),
+            terrains,
+        })
+    }
+
     pub fn load_str(str: &str) -> Self {
         let ini = Ini::load_from_str(str).unwrap_or_else(|_| {
             panic!("Unable to read the level's INI description")
         });
-        let global = &ini["Global Parameters"];
-        let storage = &ini["Storage"];
-        let render = &ini["Rendering Parameters"];
 
-        let terra_count = render
-            .get("Terrain Max")
-            .map_or(8, |value| value.parse::<usize>().unwrap());
-        let mut terrains = (0..terra_count)
-            .map(|_| TerrainConfig {
-                shadow_offset: 0,
-                height_shift: 0,
-                colors: 0..0,
-            })
-            .collect::<Box<[_]>>();
-
-        for (t, val) in terrains
-            .iter_mut()
-            .zip(render["Shadow Offsets"].split_whitespace())
-        {
-            t.shadow_offset = val.parse().unwrap();
-        }
-        for (t, val) in terrains
-            .iter_mut()
-            .zip(render["Height Shifts"].split_whitespace())
-        {
-            t.height_shift = val.parse().unwrap();
-        }
-        for (t, val) in terrains
-            .iter_mut()
-            .zip(render["Begin Colors"].split_whitespace())
-        {
-            t.colors.start = val.parse().unwrap();
-        }
-        for (t, val) in terrains
-            .iter_mut()
-            .zip(render["End Colors"].split_whitespace())
-        {
-            t.colors.end = val.parse().unwrap();
-        }
-
-        let path_data = Path::new("");
-        LevelConfig {
-            path_data: path_data.to_path_buf(),
-            path_palette: Path::new("").to_path_buf(),
-            is_compressed: &storage["Compressed Format Using"] != "0",
-            //name: self.game.level.clone(),
-            size: (
-                Power(global["Map Power X"].parse().unwrap()),
-                Power(global["Map Power Y"].parse().unwrap()),
-            ),
-            geo: Power(global["GeoNet Power"].parse().unwrap()),
-            section: Power(global["Section Size Power"].parse().unwrap()),
-            min_square: Power(global["Minimal Square Power"].parse().unwrap()),
-            terrains,
-        }
+        Self::load_ini(&ini).unwrap()
     }
-    pub fn load(ini_path: &Path) -> Self {
+
+    pub fn load_path(ini_path: &Path) -> Self {
         let ini = Ini::load_from_file(ini_path).unwrap_or_else(|_| {
             panic!("Unable to read the level's INI description: {:?}", ini_path)
         });
-        let global = &ini["Global Parameters"];
-        let storage = &ini["Storage"];
-        let render = &ini["Rendering Parameters"];
 
-        let terra_count = render
-            .get("Terrain Max")
-            .map_or(8, |value| value.parse::<usize>().unwrap());
-        let mut terrains = (0..terra_count)
-            .map(|_| TerrainConfig {
-                shadow_offset: 0,
-                height_shift: 0,
-                colors: 0..0,
-            })
-            .collect::<Box<[_]>>();
+        let mut levelcfg = Self::load_ini(&ini).unwrap();
 
-        for (t, val) in terrains
-            .iter_mut()
-            .zip(render["Shadow Offsets"].split_whitespace())
-        {
-            t.shadow_offset = val.parse().unwrap();
-        }
-        for (t, val) in terrains
-            .iter_mut()
-            .zip(render["Height Shifts"].split_whitespace())
-        {
-            t.height_shift = val.parse().unwrap();
-        }
-        for (t, val) in terrains
-            .iter_mut()
-            .zip(render["Begin Colors"].split_whitespace())
-        {
-            t.colors.start = val.parse().unwrap();
-        }
-        for (t, val) in terrains
-            .iter_mut()
-            .zip(render["End Colors"].split_whitespace())
-        {
-            t.colors.end = val.parse().unwrap();
-        }
+        levelcfg.path = Some(LevelConfigPath {
+            data: ini_path.with_file_name(&ini["Storage"]["File Name"]),
+            palette: ini_path.with_file_name(&ini["Storage"]["Palette File"])
+        });
 
-        let path_data = ini_path.with_file_name(&storage["File Name"]);
-        LevelConfig {
-            path_data,
-            path_palette: ini_path.with_file_name(&storage["Palette File"]),
-            is_compressed: &storage["Compressed Format Using"] != "0",
-            //name: self.game.level.clone(),
-            size: (
-                Power(global["Map Power X"].parse().unwrap()),
-                Power(global["Map Power Y"].parse().unwrap()),
-            ),
-            geo: Power(global["GeoNet Power"].parse().unwrap()),
-            section: Power(global["Section Size Power"].parse().unwrap()),
-            min_square: Power(global["Minimal Square Power"].parse().unwrap()),
-            terrains,
-        }
+        levelcfg
     }
 }
