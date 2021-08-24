@@ -245,10 +245,13 @@ pub fn load_flood(config: &LevelConfig) -> Vec<u8> {
     let size = (config.size.0.as_value(), config.size.1.as_value());
     let flood_size = size.1 >> config.section.as_power();
 
-    let vpr_file = match File::open(&config.path_data.with_extension("vpr")) {
-        Ok(file) => file,
-        Err(_) => return vec![0; flood_size as usize],
-    };
+    let vpr_file = match config
+        .path
+        .as_ref()
+        .and_then(|path| File::open(path.data.with_extension("vpr")).ok()) {
+            Some(file) => file,
+            None => return vec![0; flood_size as usize]
+        };
 
     info!("Loading flood map...");
     let geo_pow = config.geo.as_power();
@@ -275,7 +278,7 @@ pub fn load_flood_vec(config: &LevelConfig, vpr: &Vec<u8>) -> Vec<u8> {
     let flood_offset =
         (2 * 4 + (1 + 4 + 4) * 4 + 2 * net_size + 2 * geo_pow * 4 + 2 * flood_size * geo_pow * 4)
             as u64;
-    let expected_file_size = flood_offset + (flood_size * 4) as u64;
+
     let mut vpr = BufReader::new(Cursor::new(vpr));
     vpr.seek(SeekFrom::Start(flood_offset)).unwrap();
     (0..flood_size)
@@ -459,6 +462,7 @@ pub fn load_vmp_vec(vec: &Vec<u8>, size: (i32, i32)) -> LevelData {
     };
 
     let mut vmp = BufReader::new(Cursor::new(vec));
+
     level
         .height
         .chunks_mut(size.0 as _)
@@ -492,16 +496,23 @@ pub fn load_vec(config: &LevelConfig, vmp: &Vec<u8>, vpr: &Vec<u8>, palette: &Ve
 
 pub fn load(config: &LevelConfig) -> Level {
     info!("Loading data map...");
+
+    let path = match config.path {
+        Some(ref path) => path,
+        None => panic!("You should create `LevelConfig` by call `load_path` method")
+    };
+
     let size = (config.size.0.as_value(), config.size.1.as_value());
+
     let LevelData { height, meta, size } = if config.is_compressed {
-        load_vmc(&config.path_data.with_extension("vmc"), size)
+        load_vmc(&path.data.with_extension("vmc"), size)
     } else {
-        load_vmp(&config.path_data.with_extension("vmp"), size)
+        load_vmp(&path.data.with_extension("vmp"), size)
     };
 
     info!("Loading flood map...");
     let flood_map = load_flood(config);
-    let palette = File::open(&config.path_palette).expect("Unable to open the palette file");
+    let palette = File::open(&path.palette).expect("Unable to open the palette file");
 
     Level {
         size,
