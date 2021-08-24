@@ -5,9 +5,9 @@ mod level_png;
 mod model_obj;
 
 use std::{
-    fs::{read as fs_read, File},
-    io::BufWriter,
-    path::PathBuf,
+    fs::File,
+    io::{BufWriter, prelude::*},
+    path::{PathBuf, Path},
 };
 
 pub fn save_tiff(path: &PathBuf, layers: layers::LevelLayers) {
@@ -53,12 +53,26 @@ pub fn save_tiff(path: &PathBuf, layers: layers::LevelLayers) {
     tiff::save(file, &images).unwrap();
 }
 
-// Import the `window.alert` function from the Web.
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
+
+#[cfg(target_family="wasm")]
+mod log {
+    use wasm_bindgen::prelude::*;
+    // Import the `window.log` function from the Web.
+    #[wasm_bindgen]
+    extern "C" {
+        #[wasm_bindgen(js_namespace = console)]
+        pub fn log(s: &str);
+    }
 }
+
+#[cfg(not(target_family="wasm"))]
+mod log {
+    pub fn log(s: &str) {
+        println!("{}", &s);
+    }
+}
+
+use crate::log::*;
 
 #[wasm_bindgen]
 pub fn ron2vmp(ron_multi_png: Vec<u8>, height_png: Vec<u8>, material_hi_png: Vec<u8>, material_lo_png: Vec<u8>) -> Vec<u8> {
@@ -131,6 +145,29 @@ pub fn get_material_lo_png() -> Vec<u8> {
 
 fn main() {
     log("vange-rs convert started...");
+
+    let ini = "D:/repository/vangers/vange-rs/world/world.ini";
+    let file_vmp = "D:/repository/vangers/vange-rs/world/output.vmp";
+    let file_vmc = "D:/repository/vangers/vange-rs/world/output.vmc";
+    let file_vpr = "D:/repository/vangers/vange-rs/world/output.vpr";
+    let file_pal = "D:/repository/vangers/vange-rs/world/harmony.pal";
+
+    fn file2bytes(path: &Path) -> Vec<u8> {
+        File::open(path).map(|mut file| {
+            let mut buff = vec![];
+            file.read_to_end(&mut buff)
+                .map(|_| buff)
+                .expect(&format!("Read file error: `{:?}`", &path))
+        })
+        .expect(&format!("Open file error: `{:?}`", &path))
+    }
+
+    vmp2ron(
+        &std::str::from_utf8(&file2bytes(Path::new(ini))).unwrap(),
+        file2bytes(Path::new(file_vmp)),
+        file2bytes(Path::new(file_vpr)),
+        file2bytes(Path::new(&file_pal)),
+    );
 }
 
 /*
