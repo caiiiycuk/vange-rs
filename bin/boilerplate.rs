@@ -4,7 +4,7 @@ use vangers::{
     render::{ScreenTargets, DEPTH_FORMAT},
 };
 
-use futures::executor::{LocalPool, LocalSpawner};
+use futures::executor::{LocalPool, LocalSpawner, block_on};
 use log::info;
 use winit::{
     event,
@@ -54,9 +54,10 @@ pub struct HarnessOptions {
 
 impl Harness {
     pub fn init(options: HarnessOptions) -> (Self, config::Settings) {
-        env_logger::init();
-        let mut task_pool = LocalPool::new();
+        block_on(Harness::init_async(options))
+    }
 
+    pub async fn init_async(options: HarnessOptions) -> (Self, config::Settings) {
         info!("Loading the settings");
         let settings = config::Settings::load("config/settings.ron");
         let extent = wgpu::Extent3d {
@@ -76,19 +77,22 @@ impl Harness {
             .unwrap();
         let surface = unsafe { instance.create_surface(&window) };
 
-        info!("Initializing the device");
-        let adapter = task_pool
-            .run_until(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        info!("Initializing the device:adapter");
+        let adapter = instance.request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
-            }))
-            .expect("Unable to initialize GPU via the selected backend.");
+            }).await.expect("Unable to initialize GPU via the selected backend (adapter).");
 
         let downlevel_caps = adapter.get_downlevel_properties();
         let adapter_limits = adapter.limits();
 
+        #[cfg(target_arch = "wasm32")]
         let mut limits = wgpu::Limits::downlevel_webgl2_defaults();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let mut limits = wgpu::Limits::downlevel_defaults();
+
         if options.uses_level {
             let desired_height = 16 << 10;
             limits.max_texture_dimension_2d =
@@ -102,8 +106,9 @@ impl Harness {
                     desired_height
                 };
         }
-        let (device, queue) = task_pool
-            .run_until(adapter.request_device(
+
+        info!("Initializing the device:request");
+        let (device, queue) = adapter.request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
                     features: wgpu::Features::empty(),
@@ -114,8 +119,7 @@ impl Harness {
                 } else {
                     Some(std::path::Path::new(&settings.render.wgpu_trace_path))
                 },
-            ))
-            .unwrap();
+            ).await.expect("Unable to initialize GPU via the selected backend (request).");
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -141,7 +145,7 @@ impl Harness {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         let harness = Harness {
-            task_pool,
+            task_pool: LocalPool::new(),
             event_loop,
             window,
             device,
@@ -160,7 +164,9 @@ impl Harness {
     pub fn main_loop<A: 'static + Application>(self, mut app: A) {
         use std::time;
 
+        #[cfg(not(target_arch = "wasm32"))]
         let mut last_time = time::Instant::now();
+
         let mut needs_reload = false;
         let Harness {
             mut task_pool,
@@ -241,9 +247,14 @@ impl Harness {
                 },
                 event::Event::MainEventsCleared => {
                     let spawner = task_pool.spawner();
-                    let duration = time::Instant::now() - last_time;
-                    last_time += duration;
-                    let delta = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1.0e-9;
+
+                    let mut delta: f32 = 16.0;
+
+                    #[cfg(not(target_arch = "wasm32"))] {
+                        let duration = time::Instant::now() - last_time;
+                        last_time += duration;
+                        delta = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1.0e-9;
+                    }
 
                     let update_command_buffers = app.update(&device, delta, &spawner);
                     if !update_command_buffers.is_empty() {

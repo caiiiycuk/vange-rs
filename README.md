@@ -42,6 +42,34 @@ Controls:
 
 <img alt="game" src="etc/shots/Road11-pause.png" width="25%">
 
+### Web version
+
+Work in progress, stage matrix:
+
+  Stage                 | State              |
+  --------------------  | ------------------ |
+  Support FS            | :white_check_mark: |
+  WebGL Initialization  | :white_check_mark: |
+  Loading worlds        | :white_check_mark: |
+  Loading heights       | :white_check_mark: |
+  Loading data          | :white_check_mark: |
+  Loading flood         | :white_check_mark: |
+  Render                | :construction:     |
+
+
+Build for web (DEBUG):
+
+```sh
+PATH=$PATH:/home/caiiiycuk/rust/rust/build/x86_64-unknown-linux-gnu/stage0/lib/rustlib/x86_64-unknown-linux-gnu/bin/ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/caiiiycuk/rust/rust/build/x86_64-unknown-linux-gnu/stage0/lib/ cargo build  --target wasm32-unknown-unknown --bin road --verbose && wasm-bindgen --out-dir html5/ --target web --keep-debug target/wasm32-unknown-unknown/debug/road.wasm
+```
+
+
+Build for web (RELEASE):
+```sh
+PATH=$PATH:/home/caiiiycuk/rust/rust/build/x86_64-unknown-linux-gnu/stage0/lib/rustlib/x86_64-unknown-linux-gnu/bin/ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/caiiiycuk/rust/rust/build/x86_64-unknown-linux-gnu/stage0/lib/ cargo build  --target wasm32-unknown-unknown --bin road --verbose --release && wasm-bindgen --out-dir html5/ --target web --keep-debug target/wasm32-unknown-unknown/release/road.wasm
+```
+
+
 ### Mechous viewer/debugger
 `car` binary allows to see the mechos with items selected by the configuration. It also shows the debug collision info.
 ```bash
