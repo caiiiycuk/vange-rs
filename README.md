@@ -42,6 +42,34 @@ Controls:
 
 <img alt="game" src="etc/shots/Road11-pause.png" width="25%">
 
+### Web version
+
+Work in progress, stage matrix:
+
+  Stage                 | State              |
+  --------------------  | ------------------ |
+  Support FS            | :white_check_mark: |
+  WebGL Initialization  | :white_check_mark: |
+  Loading worlds        | :white_check_mark: |
+  Loading heights       | :white_check_mark: |
+  Loading data          | :white_check_mark: |
+  Loading flood         | :white_check_mark: |
+  Render                | :construction:     |
+
+
+Build for web (DEBUG):
+
+* Install [emsdk](https://emscripten.org/docs/getting_started/downloads.html)
+* Check that `emcc` in in PATH
+* `git checkout git@github.com:caiiiycuk/vange-rs.git`
+* `cd vange-rs`
+* `git checkout vange-rs-web-em`
+* copy vangers data into `res_linux/data` folder
+* ```sh
+EMMAKEN_CFLAGS="-g -s ERROR_ON_UNDEFINED_SYMBOLS=0 --no-entry -s FULL_ES3=1 -s ALLOW_MEMORY_GROWTH=1 -s TOTAL_MEMORY=134217728 -s GL_PREINITIALIZED_CONTEXT=1" cargo build  --target wasm32-unknown-emscripten --bin road --verbose && cp target/wasm32-unknown-emscripten/debug/road* html5-emscripten
+```
+* Run http server to sever `html5-emscripten` directory, and open it in browser and press `GO` button
+
 ### Mechous viewer/debugger
 `car` binary allows to see the mechos with items selected by the configuration. It also shows the debug collision info.
 ```bash

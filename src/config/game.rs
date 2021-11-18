@@ -25,7 +25,7 @@ impl Registry {
         let max_size: u8 = fi.next_key_value("MaxSize");
 
         for i in 0..count {
-            let num = fi.next_key_value("ModelNum");
+            let num: u32 = fi.next_key_value("ModelNum");
             assert_eq!(i, num);
             let name: String = fi.next_key_value("Name");
             let size: u8 = fi.next_key_value("Size");
