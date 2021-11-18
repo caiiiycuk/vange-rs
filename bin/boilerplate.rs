@@ -12,6 +12,11 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+
+#[cfg(target_arch = "wasm32")]
+use crate::web;
+
+
 pub trait Application {
     fn on_key(&mut self, input: event::KeyboardInput) -> bool;
     fn on_mouse_wheel(&mut self, _delta: event::MouseScrollDelta) {}
@@ -60,6 +65,7 @@ impl Harness {
     pub async fn init_async(options: HarnessOptions) -> (Self, config::Settings) {
         info!("Loading the settings");
         let settings = config::Settings::load("config/settings.ron");
+
         let extent = wgpu::Extent3d {
             width: settings.window.size[0],
             height: settings.window.size[1],
@@ -162,7 +168,11 @@ impl Harness {
     }
 
     pub fn main_loop<A: 'static + Application>(self, mut app: A) {
+        #[cfg(not(target_arch = "wasm32"))]
         use std::time;
+
+        #[cfg(target_arch = "wasm32")]
+        let mut last_time = web::now();
 
         #[cfg(not(target_arch = "wasm32"))]
         let mut last_time = time::Instant::now();
@@ -186,6 +196,9 @@ impl Harness {
             let _ = window;
             *control_flow = ControlFlow::Poll;
             task_pool.run_until_stalled();
+
+            #[cfg(target_arch = "wasm32")]
+            web::bind_once(&mut app);
 
             match event {
                 event::Event::WindowEvent {
@@ -248,7 +261,13 @@ impl Harness {
                 event::Event::MainEventsCleared => {
                     let spawner = task_pool.spawner();
 
-                    let mut delta: f32 = 16.0;
+                    let delta: f32;
+
+                    #[cfg(target_arch = "wasm32")] {
+                        let duration = web::now() - last_time;
+                        last_time += duration;
+                        delta = (duration / 1000.0) as f32;
+                    }
 
                     #[cfg(not(target_arch = "wasm32"))] {
                         let duration = time::Instant::now() - last_time;
@@ -256,9 +275,11 @@ impl Harness {
                         delta = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1.0e-9;
                     }
 
-                    let update_command_buffers = app.update(&device, delta, &spawner);
-                    if !update_command_buffers.is_empty() {
-                        queue.submit(update_command_buffers);
+                    if (delta > 0.0) {
+                        let update_command_buffers = app.update(&device, delta, &spawner);
+                        if !update_command_buffers.is_empty() {
+                            queue.submit(update_command_buffers);
+                        }
                     }
 
                     match surface.get_current_texture() {
