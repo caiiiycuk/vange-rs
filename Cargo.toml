@@ -55,7 +55,7 @@ glsl-to-spirv = { version = "0.1", optional = true }
 log = "0.4"
 rand = "0.8"
 rayon = "1"
-ron = "0.5.1"
+ron = { git = "https://github.com/ron-rs/ron", rev = "6e96c3beef8f22059cbd53e1216a894336410fc1" }
 rust-ini = "0.17"
 serde = "1.0"
 serde_derive = "1.0"
