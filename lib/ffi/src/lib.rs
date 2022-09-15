@@ -11,6 +11,17 @@ Changelog:
 use futures::executor::LocalPool;
 use std::{ffi::CString, fs::File, os::raw, ptr};
 
+#[cfg(feature = "android_logger")]
+extern crate log_panics;
+#[cfg(feature = "android_logger")]
+extern crate log;
+#[cfg(feature = "android_logger")]
+extern crate android_logger;
+#[cfg(feature = "android_logger")]
+use log::Level;
+#[cfg(feature = "android_logger")]
+use android_logger::Config;
+
 // Update this whenever C header changes
 #[no_mangle]
 pub static rv_api_1: i32 = 1;
@@ -148,6 +159,13 @@ fn crate_main_views(
 pub extern "C" fn rv_init(desc: InitDescriptor) -> Option<ptr::NonNull<Context>> {
     #[cfg(feature = "env_logger")]
     let _ = env_logger::try_init();
+
+    #[cfg(feature = "android_logger")]
+    log_panics::init();
+
+    #[cfg(feature = "android_logger")]
+    let _ = android_logger::init_once(Config::default().with_min_level(Level::Warn));
+
     let mut task_pool = LocalPool::new();
 
     let exposed = unsafe {

@@ -17,3 +17,8 @@ cgmath = "0.18"
 ron = "0.6"
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "9219489", features = ["angle"] }
 hal = { package = "wgpu-hal", git = "https://github.com/gfx-rs/wgpu", rev = "9219489", features = ["gles"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = { version = "0.11", optional = true }
+log = "0.4"
+log-panics = { version = "2" }
