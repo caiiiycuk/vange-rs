@@ -192,7 +192,7 @@ pub extern "C" fn rv_init(desc: InitDescriptor) -> Option<ptr::NonNull<Context>>
             } else {
                 desired_height
             },
-            ..wgpu::Limits::downlevel_webgl2_defaults()
+            ..wgpu::Limits::downlevel_defaults()
         }
     };
 

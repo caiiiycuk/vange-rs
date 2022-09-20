@@ -92,7 +92,7 @@ impl Harness {
             Terrain::RayTraced { .. }
             | Terrain::RayMipTraced { .. }
             | Terrain::Sliced { .. }
-            | Terrain::Painted { .. } => wgpu::Limits::downlevel_webgl2_defaults(),
+            | Terrain::Painted { .. } => wgpu::Limits::downlevel_defaults(),
             Terrain::Scattered { .. } => wgpu::Limits::default(),
         };
         if options.uses_level {
