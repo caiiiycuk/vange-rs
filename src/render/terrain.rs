@@ -11,7 +11,11 @@ use crate::{
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;
 
-use std::{mem, num::{NonZeroU32, NonZeroU64}, ops::Range};
+use std::{
+    mem,
+    num::{NonZeroU32, NonZeroU64},
+    ops::Range,
+};
 
 pub const HEIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 const SCATTER_GROUP_SIZE: [u32; 3] = [16, 16, 1];
@@ -471,7 +475,11 @@ impl Context {
 
         let height_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Terrain height"),
-            size: extent,
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: terrain_mip_count,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -482,7 +490,11 @@ impl Context {
         });
         let meta_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Terrain meta"),
-            size: extent,
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -700,7 +712,7 @@ impl Context {
             label: Some("Terrain data"),
             size: (extent.width * 2) as wgpu::BufferAddress * extent.height as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: true,
+            mapped_at_creation: false,
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -761,7 +773,7 @@ impl Context {
                         buffer: &terrain_data,
                         offset: 0,
                         size: NonZeroU64::new((extent.width * 2 * extent.height).into()),
-                    })
+                    }),
                 },
             ],
         });
@@ -1074,11 +1086,10 @@ impl Context {
                     depth_or_array_layers: 1,
                 };
 
-                let staging_stride =
-                    super::align_to(rect.w as u32 * 2, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-                let staging_size = staging_stride as wgpu::BufferAddress * rect.h as wgpu::BufferAddress;
+                let staging_stride = super::align_to(rect.w as u32 * 2, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+                let staging_size = (staging_stride * (rect.h as u32)) as wgpu::BufferAddress;
                 let staging_buf = device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("staging level update"),
+                    label: None,
                     size: staging_size,
                     usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::MAP_WRITE,
                     mapped_at_creation: true,
@@ -1097,59 +1108,12 @@ impl Context {
                     }
                 }
                 staging_buf.unmap();
-                
-                {
-                    let mut mapping = self.terrain_data.slice(..).get_mapped_range_mut();
-                    for (row, y) in mapping
-                        .chunks_mut((extent.width * 2) as usize)
-                        .zip(rect.y as usize..)
-                    {
-                        let level_offset = y * level.size.0 as usize + rect.x as usize;
-                        row[..rect.w as usize]
-                            .copy_from_slice(&level.height[level_offset..][..rect.w as usize]);
-                        row[rect.w as usize..rect.w as usize * 2]
-                            .copy_from_slice(&level.meta[level_offset..][..rect.w as usize]);
-                    }
-                }
-                self.terrain_data.unmap();
-
-
-                encoder.copy_buffer_to_texture(
-                    wgpu::ImageCopyBuffer {
-                        buffer: &staging_buf,
-                        layout: wgpu::ImageDataLayout {
-                            offset: 0,
-                            bytes_per_row: NonZeroU32::new(staging_stride),
-                            rows_per_image: None,
-                        },
-                    },
-                    wgpu::ImageCopyTexture {
-                        origin,
-                        ..self.height_texture.as_image_copy()
-                    },
-                    extent,
-                );
-                // encoder.copy_buffer_to_buffer(
-                //     &staging_buf, 
-                //     0, 
-                //     &self.terrain_data, 
-                //     (origin.y * staging_stride + origin.x).into(), 
-                //     staging_size,
-                // );
-                encoder.copy_buffer_to_texture(
-                    wgpu::ImageCopyBuffer {
-                        buffer: &staging_buf,
-                        layout: wgpu::ImageDataLayout {
-                            offset: rect.w as wgpu::BufferAddress,
-                            bytes_per_row: NonZeroU32::new(staging_stride),
-                            rows_per_image: None,
-                        },
-                    },
-                    wgpu::ImageCopyTexture {
-                        origin,
-                        ..self.meta_texture.as_image_copy()
-                    },
-                    extent,
+                encoder.copy_buffer_to_buffer(
+                    &staging_buf,
+                    0,
+                    &self.terrain_data,
+                    ((rect.y as u32) * staging_stride + (rect.x as u32) * 2) as wgpu::BufferAddress,
+                    staging_size,
                 );
             }
 

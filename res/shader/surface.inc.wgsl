@@ -26,10 +26,6 @@ struct StorageIndex {
 };
 
 @group(1) @binding(0) var<uniform> u_Surface: SurfaceConstants;
-
-@group(1) @binding(2) var t_Height: texture_2d<f32>;
-@group(1) @binding(3) var t_Meta: texture_2d<u32>;
-@group(1) @binding(7) var s_Main: sampler;
 @group(1) @binding(10) var<storage> t_Data: TerrainData;
 
 let c_DoubleLevelMask: u32 = 64u;
@@ -52,10 +48,10 @@ fn modulo(a: i32, b: i32) -> i32 {
 }
 
 fn get_storage_index(ipos: vec2<i32>, offset: i32) -> StorageIndex {
-    let x = modulo(ipos.x, i32(u_Surface.texture_scale.x));
-    let y = modulo(ipos.y, i32(u_Surface.texture_scale.y));
-    // let x = ipos.x;
-    // let y = ipos.y;
+    // let x = modulo(ipos.x, i32(u_Surface.texture_scale.x));
+    // let y = modulo(ipos.y, i32(u_Surface.texture_scale.y));
+    let x = ipos.x;
+    let y = ipos.y;
     let index = u32(y * i32(u_Surface.texture_scale.x) * 2 + x + offset);
 
     var si: StorageIndex;
@@ -77,10 +73,7 @@ fn get_storage_meta(ipos: vec2<i32>) -> u32 {
 }
 
 fn get_lod_height(ipos: vec2<i32>, lod: u32) -> f32 {
-    let x = modulo(ipos.x, i32(u_Surface.texture_scale.x));
-    let y = modulo(ipos.y, i32(u_Surface.texture_scale.y));
-    let tc = vec2<i32>(x, y) >> vec2<u32>(lod);
-    let alt = textureLoad(t_Height, tc, i32(lod)).x;
+    let alt = get_storage_height(ipos);
     return alt * u_Surface.texture_scale.z;
 }
 
