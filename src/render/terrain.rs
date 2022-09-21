@@ -57,6 +57,15 @@ struct ScatterConstants {
     sample_x: Range<f32>,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct TerrainConstants {
+    _meta_offset: u32,
+    _stride: i32,
+}
+unsafe impl Pod for TerrainConstants {}
+unsafe impl Zeroable for TerrainConstants {}
+
 //Note: this is very similar to `visible_bounds_at()`
 // but it searches in a different parameter space
 fn compute_scatter_constants(cam: &Camera) -> ScatterConstants {
@@ -683,6 +692,17 @@ impl Context {
                     },
                     count: None,
                 },
+                // terraind data uniforms
+                wgpu::BindGroupLayoutEntry {
+                    binding: 11,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
@@ -713,6 +733,14 @@ impl Context {
             size: (extent.width * 2) as wgpu::BufferAddress * extent.height as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
+        });
+        let terrain_data_uni = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("terrain-data-uniforms"),
+            contents: bytemuck::bytes_of(&TerrainConstants {
+                _meta_offset: extent.width / 4,
+                _stride: (extent.width * 2) as i32,
+            }),
+            usage: wgpu::BufferUsages::UNIFORM,
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -774,6 +802,10 @@ impl Context {
                         offset: 0,
                         size: NonZeroU64::new((extent.width * 2 * extent.height).into()),
                     }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 11,
+                    resource: terrain_data_uni.as_entire_binding(),
                 },
             ],
         });

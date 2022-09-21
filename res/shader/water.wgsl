@@ -23,9 +23,7 @@ fn main_vs(@location(0) pos: vec2<f32>, @location(1) flood_id: i32) -> Varyings 
 fn main_fs(in: Varyings) -> @location(0) vec4<f32> {
     // cut off the least bit of X coordiante to always point to the low end
     let tci = get_map_coordinates(in.world_pos.xy) & vec2<i32>(-2, -1);
-    let meta_low = 
-        get_storage_meta(tci);
-        //textureLoad(t_Meta, tci, 0).x;
+    let meta_low = get_storage_meta(get_storage_index(tci));
     if (get_terrain_type(meta_low) != c_TerrainWater) {
         return vec4<f32>(0.0);
     }

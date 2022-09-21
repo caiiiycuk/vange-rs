@@ -23,30 +23,24 @@ fn evaluate_light(material: vec3<f32>, height_diff: f32) -> f32 {
     return clamp(v, 0.0, 1.0);
 }
 
-fn evaluate_palette(ty: u32, value_in: f32, ycoord: f32) -> f32 {
+fn evaluate_palette(ty: u32, value_in: f32) -> f32 {
     var value = clamp(value_in, 0.0, 1.0);
     let terr = vec4<f32>(textureLoad(t_Table, i32(ty), 0));
     //Note: the original game had specific logic here to process water
     return (mix(terr.z, terr.w, value) + 0.5) / 256.0;
 }
 
-fn evaluate_color_id(ty: u32, tex_coord: vec2<f32>, height_normalized: f32, lit_factor: f32) -> f32 {
+fn evaluate_color_id(ty: u32, height_diff: f32, height_normalized: f32, lit_factor: f32) -> f32 {
     // See the original code in "land.cpp": `LINE_render()`
-    //Note: we could have a different code path for double level here
-    let map_coord = tex_coord * u_Surface.texture_scale.xy;
-    let diff = 
-        get_storage_height(get_map_coordinates(map_coord)) - 
-        get_storage_height(get_map_coordinates(map_coord) + vec2<i32>(-2, 0));
-        // textureSampleLevel(t_Height, s_Main, tex_coord, 0.0, vec2<i32>(0, 0)).x -
-        // textureSampleLevel(t_Height, s_Main, tex_coord, 0.0, vec2<i32>(-2, 0)).x;
+    // Note: we could have a different code path for double level here
     // See the original code in "land.cpp": `TERRAIN_MATERIAL` etc
     let material = select(vec3<f32>(1.0), vec3<f32>(5.0, 1.25, 0.5), ty == 0u);
-    let light_clr = evaluate_light(material, diff);
+    let light_clr = evaluate_light(material, height_diff);
     let tmp = light_clr - c_HorFactor * (1.0 - height_normalized);
-    return evaluate_palette(ty, lit_factor * tmp, tex_coord.y);
+    return evaluate_palette(ty, lit_factor * tmp);
 }
 
-fn evaluate_color(ty: u32, tex_coord: vec2<f32>, height_normalized: f32, lit_factor: f32) -> vec4<f32> {
-    let color_id = evaluate_color_id(ty, tex_coord, height_normalized, lit_factor);
+fn evaluate_color(ty: u32, height_diff: f32, height_normalized: f32, lit_factor: f32) -> vec4<f32> {
+    let color_id = evaluate_color_id(ty, height_diff, height_normalized, lit_factor);
     return textureSample(t_Palette, s_Palette, color_id);
 }
