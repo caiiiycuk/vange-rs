@@ -6,7 +6,7 @@ struct SurfaceConstants {
 };
 
 struct TerrainData {
-    height: array<u32>;
+    heightAndMeta: array<u32>;
 };
 
 struct Surface {
@@ -51,12 +51,12 @@ fn modulo(a: i32, b: i32) -> i32 {
     return select(c, c+b, c < 0);
 }
 
-fn get_storage_index(ipos: vec2<i32>) -> StorageIndex {
+fn get_storage_index(ipos: vec2<i32>, offset: i32) -> StorageIndex {
     let x = modulo(ipos.x, i32(u_Surface.texture_scale.x));
     let y = modulo(ipos.y, i32(u_Surface.texture_scale.y));
     // let x = ipos.x;
     // let y = ipos.y;
-    let index = u32(y * i32(u_Surface.texture_scale.x) + x);
+    let index = u32(y * i32(u_Surface.texture_scale.x) * 2 + x + offset);
 
     var si: StorageIndex;
     si.index = index / 4u;
@@ -67,8 +67,13 @@ fn get_storage_index(ipos: vec2<i32>) -> StorageIndex {
 }
 
 fn get_storage_height(ipos: vec2<i32>) -> f32 {
-    let si = get_storage_index(ipos);
-    return f32((t_Data.height[si.index] & si.mask) >> si.shift) / 256.0;
+    let si = get_storage_index(ipos, 0);
+    return f32((t_Data.heightAndMeta[si.index] & si.mask) >> si.shift) / 256.0;
+}
+
+fn get_storage_meta(ipos: vec2<i32>) -> u32 {
+    let si = get_storage_index(ipos, i32(u_Surface.texture_scale.x));
+    return (t_Data.heightAndMeta[si.index] & si.mask) >> si.shift;
 }
 
 fn get_lod_height(ipos: vec2<i32>, lod: u32) -> f32 {
@@ -91,7 +96,9 @@ fn get_surface(pos: vec2<f32>) -> Surface {
 
     suf.tex_coord = tc;
 
-    let meta = textureLoad(t_Meta, tci, 0).x;
+    let meta = 
+        //textureLoad(t_Meta, tci, 0).x
+        get_storage_meta(tci);
     suf.is_shadowed = (meta & c_ShadowMask) != 0u;
     suf.low_type = get_terrain_type(meta);
 
@@ -101,12 +108,17 @@ fn get_surface(pos: vec2<f32>) -> Surface {
         var delta = 0u;
         var stor_coord = tci;
         if (tci.x % 2 == 1) {
-            let meta_low = textureLoad(t_Meta, tci + vec2<i32>(-1, 0), 0).x;
+            let meta_low = 
+                // textureLoad(t_Meta, tci + vec2<i32>(-1, 0), 0).x
+                get_storage_meta(tci + vec2<i32>(-1, 0));
+
             suf.high_type = suf.low_type;
             suf.low_type = get_terrain_type(meta_low);
             delta = (get_delta(meta_low) << c_DeltaBits) + get_delta(meta);
         } else {
-            let meta_high = textureLoad(t_Meta, tci + vec2<i32>(1, 0), 0).x;
+            let meta_high = 
+                // textureLoad(t_Meta, tci + vec2<i32>(1, 0), 0).x
+                get_storage_meta(tci + vec2<i32>(1, 0));
             suf.tex_coord.x = suf.tex_coord.x + 1.0 / u_Surface.texture_scale.x;
             suf.high_type = get_terrain_type(meta_high);
             delta = (get_delta(meta) << c_DeltaBits) + get_delta(meta_high);

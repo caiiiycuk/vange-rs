@@ -698,7 +698,7 @@ impl Context {
 
         let terrain_data = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Terrain data"),
-            size: extent.width as wgpu::BufferAddress * extent.height as wgpu::BufferAddress,
+            size: (extent.width * 2) as wgpu::BufferAddress * extent.height as wgpu::BufferAddress,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: true,
         });
@@ -760,7 +760,7 @@ impl Context {
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &terrain_data,
                         offset: 0,
-                        size: NonZeroU64::new((extent.width * extent.height).into()),
+                        size: NonZeroU64::new((extent.width * 2 * extent.height).into()),
                     })
                 },
             ],
@@ -1101,12 +1101,14 @@ impl Context {
                 {
                     let mut mapping = self.terrain_data.slice(..).get_mapped_range_mut();
                     for (row, y) in mapping
-                        .chunks_mut((extent.width) as usize)
+                        .chunks_mut((extent.width * 2) as usize)
                         .zip(rect.y as usize..)
                     {
                         let level_offset = y * level.size.0 as usize + rect.x as usize;
                         row[..rect.w as usize]
                             .copy_from_slice(&level.height[level_offset..][..rect.w as usize]);
+                        row[rect.w as usize..rect.w as usize * 2]
+                            .copy_from_slice(&level.meta[level_offset..][..rect.w as usize]);
                     }
                 }
                 self.terrain_data.unmap();
