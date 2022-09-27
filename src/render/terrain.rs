@@ -1131,48 +1131,48 @@ impl Context {
         cam: &Camera,
         screen_size: wgpu::Extent3d,
     ) {
-        use cgmath::EuclideanSpace;
-        let params = match self.shadow_kind {
-            Kind::RayMip { params, .. } => params,
-            _ => [0; 4],
-        };
+        // use cgmath::EuclideanSpace;
+        // let params = match self.shadow_kind {
+        //     Kind::RayMip { params, .. } => params,
+        //     _ => [0; 4],
+        // };
 
-        let bounds = cam.visible_bounds();
-        let sc = ScatterConstants {
-            origin: cgmath::Point2::from_vec(cam.loc.truncate()),
-            dir: cam.dir().truncate(),
-            sample_x: bounds.start.x..bounds.end.x,
-            sample_y: bounds.start.y..bounds.end.y,
-        };
+        // let bounds = cam.visible_bounds();
+        // let sc = ScatterConstants {
+        //     origin: cgmath::Point2::from_vec(cam.loc.truncate()),
+        //     dir: cam.dir().truncate(),
+        //     sample_x: bounds.start.x..bounds.end.x,
+        //     sample_y: bounds.start.y..bounds.end.y,
+        // };
 
-        {
-            // constants update
-            let staging = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("temp-constants"),
-                contents: bytemuck::bytes_of(&Constants {
-                    screen_rect: [0, 0, screen_size.width, screen_size.height],
-                    params,
-                    cam_origin_dir: [sc.origin.x, sc.origin.y, sc.dir.x, sc.dir.y],
-                    sample_range: [
-                        sc.sample_x.start,
-                        sc.sample_x.end,
-                        sc.sample_y.start,
-                        sc.sample_y.end,
-                    ],
-                    fog_color: [0.0; 3],
-                    pad: 1.0,
-                    fog_params: [10000000.0, 10000000.0, 0.0, 0.0],
-                }),
-                usage: wgpu::BufferUsages::COPY_SRC,
-            });
-            encoder.copy_buffer_to_buffer(
-                &staging,
-                0,
-                &self.uniform_buf,
-                0,
-                mem::size_of::<Constants>() as wgpu::BufferAddress,
-            );
-        }
+        // {
+        //     // constants update
+        //     let staging = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //         label: Some("temp-constants"),
+        //         contents: bytemuck::bytes_of(&Constants {
+        //             screen_rect: [0, 0, screen_size.width, screen_size.height],
+        //             params,
+        //             cam_origin_dir: [sc.origin.x, sc.origin.y, sc.dir.x, sc.dir.y],
+        //             sample_range: [
+        //                 sc.sample_x.start,
+        //                 sc.sample_x.end,
+        //                 sc.sample_y.start,
+        //                 sc.sample_y.end,
+        //             ],
+        //             fog_color: [0.0; 3],
+        //             pad: 1.0,
+        //             fog_params: [10000000.0, 10000000.0, 0.0, 0.0],
+        //         }),
+        //         usage: wgpu::BufferUsages::COPY_SRC,
+        //     });
+        //     encoder.copy_buffer_to_buffer(
+        //         &staging,
+        //         0,
+        //         &self.uniform_buf,
+        //         0,
+        //         mem::size_of::<Constants>() as wgpu::BufferAddress,
+        //     );
+        // }
     }
 
     pub fn draw<'a>(&'a self, pass: &mut wgpu::RenderPass<'a>) {
@@ -1212,17 +1212,17 @@ impl Context {
     }
 
     pub fn draw_shadow<'a>(&'a self, pass: &mut wgpu::RenderPass<'a>) {
-        pass.set_bind_group(1, &self.bind_group, &[]);
+        // pass.set_bind_group(1, &self.bind_group, &[]);
         // draw terrain
-        match self.shadow_kind {
-            Kind::Ray { ref pipeline } | Kind::RayMip { ref pipeline, .. } => {
-                let geo = &self.raytrace_geo;
-                pass.set_pipeline(pipeline);
-                pass.set_index_buffer(geo.index_buf.slice(..), wgpu::IndexFormat::Uint16);
-                pass.set_vertex_buffer(0, geo.vertex_buf.slice(..));
-                pass.draw_indexed(0..geo.num_indices, 0, 0..1);
-            }
-            _ => unreachable!(),
-        }
+        // match self.shadow_kind {
+            // Kind::Ray { ref pipeline } | Kind::RayMip { ref pipeline, .. } => {
+                // let geo = &self.raytrace_geo;
+                // pass.set_pipeline(pipeline);
+                // pass.set_index_buffer(geo.index_buf.slice(..), wgpu::IndexFormat::Uint16);
+                // pass.set_vertex_buffer(0, geo.vertex_buf.slice(..));
+                // pass.draw_indexed(0..geo.num_indices, 0, 0..1);
+            // }
+            // _ => unreachable!(),
+        // }
     }
 }
