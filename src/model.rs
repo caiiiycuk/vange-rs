@@ -1,3 +1,5 @@
+#![allow(unused_qualifications)]
+
 use crate::render::{
     debug::Position as DebugPos,
     object::{Context as ObjectContext, Vertex as ObjectVertex},

@@ -1,3 +1,5 @@
+#![allow(unused_qualifications)]
+
 /*! Rusty Vangers FFI bindings.
 
 Matches "lib/renderer/src/renderer/scene/rust/vange_rs.h"

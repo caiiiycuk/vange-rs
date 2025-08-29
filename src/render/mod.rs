@@ -1,3 +1,5 @@
+#![allow(unused_qualifications)]
+
 use crate::{
     config::settings,
     level, model,
