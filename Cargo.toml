@@ -71,6 +71,8 @@ env_logger = "0.9"
 getopts = "0.2"
 obj = "0.10"
 png = "0.16"
+
+[target.'cfg(not(target_os = "emscripten"))'.dependencies]
 winit = "0.26"
 
 [dev-dependencies]
@@ -85,6 +87,10 @@ default-features = false
 #wgpu-hal = { path = "../wgpu/wgpu-hal" }
 #wgpu-core = { path = "../wgpu/wgpu-core" }
 #wgpu-types = { path = "../wgpu/wgpu-types" }
+wgpu = { path = "third_party/wgpu/wgpu" }
+wgpu-hal = { path = "third_party/wgpu/wgpu-hal" }
+wgpu-core = { path = "third_party/wgpu/wgpu-core" }
+wgpu-types = { path = "third_party/wgpu/wgpu-types" }
 
 [patch."https://github.com/gfx-rs/naga"]
 #naga = { path = "../naga" }

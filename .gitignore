@@ -1,5 +1,6 @@
 /target
-/.cargo
+/.cargo/*
+!/.cargo/config.toml
 /config/settings.ron
 .fuse_hidden*
 .DS_Store

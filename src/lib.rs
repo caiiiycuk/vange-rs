@@ -2,7 +2,6 @@
     trivial_casts,
     trivial_numeric_casts,
     //unused,
-    unused_qualifications,
     rust_2018_compatibility,
     rust_2018_idioms,
     future_incompatible,

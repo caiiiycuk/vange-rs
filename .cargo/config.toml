@@ -1,0 +1,2 @@
+[target.wasm32-unknown-emscripten]
+rustflags = ["-C", "panic=unwind"]
