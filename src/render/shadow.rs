@@ -94,10 +94,26 @@ impl Shadow {
             Vec3::new(center.x + shadow_radius, center.y - shadow_radius, 0.0),
             Vec3::new(center.x + shadow_radius, center.y + shadow_radius, 0.0),
             Vec3::new(center.x - shadow_radius, center.y + shadow_radius, 0.0),
-            Vec3::new(center.x - shadow_radius, center.y - shadow_radius, max_height),
-            Vec3::new(center.x + shadow_radius, center.y - shadow_radius, max_height),
-            Vec3::new(center.x + shadow_radius, center.y + shadow_radius, max_height),
-            Vec3::new(center.x - shadow_radius, center.y + shadow_radius, max_height),
+            Vec3::new(
+                center.x - shadow_radius,
+                center.y - shadow_radius,
+                max_height,
+            ),
+            Vec3::new(
+                center.x + shadow_radius,
+                center.y - shadow_radius,
+                max_height,
+            ),
+            Vec3::new(
+                center.x + shadow_radius,
+                center.y + shadow_radius,
+                max_height,
+            ),
+            Vec3::new(
+                center.x - shadow_radius,
+                center.y + shadow_radius,
+                max_height,
+            ),
         ];
 
         for pt in corners {

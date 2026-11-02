@@ -40,7 +40,7 @@ struct SurfaceConstants {
     texture_scale: [f32; 4],
     terrain_bits: u32,
     delta_mode: u32,
-    pad0: u32,
+    rows_per_layer: u32,
     pad1: u32,
 }
 unsafe impl Pod for SurfaceConstants {}
@@ -310,6 +310,7 @@ pub struct Context {
     kind: Kind,
     shadow_kind: ShadowKind,
     pub terrain_texture: wgpu::Texture,
+    rows_per_layer: u32,
     palette_texture: wgpu::Texture,
     pub flood: Flood,
     pub dirty_rects: Vec<super::DirtyRect>,
@@ -752,11 +753,32 @@ impl Context {
             })
             .collect::<Vec<_>>();
 
+        // Mobile GPUs cap 2D textures at 8192 while a level is 16384 rows high,
+        // so the rows are spread over array layers of at most the device limit.
+        // SAFETY: at least two layers, because the GLES backend creates a
+        // single-layer D2 texture as GL_TEXTURE_2D, which cannot be bound as a
+        // 2D array and samples as zeros (wgpu-hal gles `get_info_from_desc`).
+        let device_limits = gfx.device.limits();
+        let layer_count = extent
+            .height
+            .div_ceil(device_limits.max_texture_dimension_2d)
+            .max(2);
+        let rows_per_layer = extent.height.div_ceil(layer_count);
+        assert!(
+            layer_count <= device_limits.max_texture_array_layers,
+            "Terrain data {}x{} needs {} layers of {} rows, device allows {} layers",
+            extent.width,
+            extent.height,
+            layer_count,
+            rows_per_layer,
+            device_limits.max_texture_array_layers,
+        );
         let terrain_texture = gfx.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Terrain data"),
             size: wgpu::Extent3d {
                 width: extent.width / 2,
-                ..extent
+                height: rows_per_layer,
+                depth_or_array_layers: layer_count,
             },
             mip_level_count: 1,
             sample_count: 1,
@@ -855,7 +877,7 @@ impl Context {
                             binding: 2,
                             visibility: base_visibility,
                             ty: wgpu::BindingType::Texture {
-                                view_dimension: wgpu::TextureViewDimension::D2,
+                                view_dimension: wgpu::TextureViewDimension::D2Array,
                                 sample_type: wgpu::TextureSampleType::Uint,
                                 multisampled: false,
                             },
@@ -938,9 +960,12 @@ impl Context {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::TextureView(
-                        &terrain_texture.create_view(&wgpu::TextureViewDescriptor::default()),
-                    ),
+                    resource: wgpu::BindingResource::TextureView(&terrain_texture.create_view(
+                        &wgpu::TextureViewDescriptor {
+                            dimension: Some(wgpu::TextureViewDimension::D2Array),
+                            ..Default::default()
+                        },
+                    )),
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
@@ -1423,6 +1448,7 @@ impl Context {
             kind,
             shadow_kind,
             terrain_texture,
+            rows_per_layer,
             palette_texture: palette.texture,
             flood: Flood {
                 texture: flood_texture,
@@ -1448,7 +1474,7 @@ impl Context {
                 texture_scale: [0.0; 4],
                 terrain_bits: 0,
                 delta_mode: 0,
-                pad0: 0,
+                rows_per_layer: 0,
                 pad1: 0,
             },
             // Default to unbaked diffuse + shadow — matches the look
@@ -1581,7 +1607,7 @@ impl Context {
                 ],
                 terrain_bits: bits.shift as u32 | ((bits.mask as u32) << 4),
                 delta_mode,
-                pad0: 0,
+                rows_per_layer: self.rows_per_layer,
                 pad1: 0,
             }
         };
@@ -1635,31 +1661,40 @@ impl Context {
                     usage: wgpu::BufferUsages::COPY_SRC,
                 });
 
-                encoder.copy_buffer_to_texture(
-                    wgpu::TexelCopyBufferInfo {
-                        buffer: &staging_buf,
-                        layout: wgpu::TexelCopyBufferLayout {
-                            offset: 0,
-                            bytes_per_row: Some(level.size.0 as u32 * 2),
-                            rows_per_image: None,
+                let rect_start = dr.rect.y as u32;
+                let rect_end = rect_start + dr.rect.h as u32;
+                for layer in rect_start / self.rows_per_layer..=(rect_end - 1) / self.rows_per_layer
+                {
+                    let layer_start = layer * self.rows_per_layer;
+                    let start = rect_start.max(layer_start);
+                    let end = rect_end.min(layer_start + self.rows_per_layer);
+                    encoder.copy_buffer_to_texture(
+                        wgpu::TexelCopyBufferInfo {
+                            buffer: &staging_buf,
+                            layout: wgpu::TexelCopyBufferLayout {
+                                offset: ((start - rect_start) as usize * row_stride)
+                                    as wgpu::BufferAddress,
+                                bytes_per_row: Some(level.size.0 as u32 * 2),
+                                rows_per_image: None,
+                            },
                         },
-                    },
-                    wgpu::TexelCopyTextureInfo {
-                        texture: &self.terrain_texture,
-                        mip_level: 0,
-                        origin: wgpu::Origin3d {
-                            x: 0,
-                            y: dr.rect.y as u32,
-                            z: 0,
+                        wgpu::TexelCopyTextureInfo {
+                            texture: &self.terrain_texture,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d {
+                                x: 0,
+                                y: start - layer_start,
+                                z: layer,
+                            },
+                            aspect: wgpu::TextureAspect::All,
                         },
-                        aspect: wgpu::TextureAspect::All,
-                    },
-                    wgpu::Extent3d {
-                        width: level.size.0 as u32 / 2,
-                        height: dr.rect.h as u32,
-                        depth_or_array_layers: 1,
-                    },
-                );
+                        wgpu::Extent3d {
+                            width: level.size.0 as u32 / 2,
+                            height: end - start,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+                }
 
                 dr.need_upload = false;
             }
